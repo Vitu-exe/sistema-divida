@@ -34,7 +34,7 @@
             const [dataManual, setDataManual] = useState('');
 
             useEffect(() => {
-                fetch('http://localhost:3001/api/dividas/Felipe')
+                fetch('/api/dividas/Felipe')
                     .then(res => res.json())
                     .then(data => {
                         setDadosContrato(data.contrato);
@@ -54,7 +54,7 @@
 
             const confirmarEnvioManual = async () => {
                 try {
-                    await fetch('http://localhost:3001/api/pagamentos/manual', {
+                    await fetch('/api/pagamentos/manual', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ parcela_id: parcelaSelecionada.id, data_pagamento: dataManual })
