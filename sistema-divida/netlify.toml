@@ -1,8 +1,16 @@
 [build]
   publish = "public"
-  functions = "netlify/functions"
+  command = "npm install"
 
+# Regra 1: Tudo que for /api/ vai pro seu backend
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/api/:splat"
+  status = 200
+  force = true
+
+# Regra 2: Qualquer outra coisa, mostra o seu index.html
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
   status = 200
