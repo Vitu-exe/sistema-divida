@@ -2,133 +2,343 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel de Dívidas - Felipe</title>
-    <!-- Tailwind CSS via CDN -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Controle de Dívida - Simples Nacional</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- React e ReactDOM via CDN -->
-    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <!-- Babel para ler JSX no navegador -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <!-- Ícones Lucide -->
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-        body { font-family: 'Inter', sans-serif; }
-    </style>
-</head>
-<body class="bg-gray-50 text-gray-800">
-    <div id="root"></div>
+        body {
+            background-color: #f8fafc; /* Slate 50 */
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 
-    <script type="text/babel">
-        const { useState, useEffect } = React;
-
-        function App() {
-            const [dadosContrato, setDadosContrato] = useState(null);
-            const [parcelas, setParcelas] = useState([]);
-            const [carregando, setCarregando] = useState(true);
-            const [modalAberto, setModalAberto] = useState(false);
-            const [parcelaSelecionada, setParcelaSelecionada] = useState(null);
-            const [tabAtiva, setTabAtiva] = useState('upload'); 
-            const [dataManual, setDataManual] = useState('');
-
-            useEffect(() => {
-                fetch('/api/dividas/Felipe')
-                    .then(res => res.json())
-                    .then(data => {
-                        setDadosContrato(data.contrato);
-                        setParcelas(data.parcelas);
-                        setCarregando(false);
-                    })
-                    .catch(() => setCarregando(false));
-            }, []);
-
-            // Reinicializa os ícones do Lucide sempre que o componente renderiza
-            useEffect(() => {
-                if (window.lucide) window.lucide.createIcons();
-            });
-
-            const formatarMoeda = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
-            const formatarData = (d) => d ? new Date(d).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '';
-
-            const confirmarEnvioManual = async () => {
-                try {
-                    await fetch('/api/pagamentos/manual', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ parcela_id: parcelaSelecionada.id, data_pagamento: dataManual })
-                    });
-                    
-                    setParcelas(parcelas.map(p => p.id === parcelaSelecionada.id ? { ...p, status: 'pago', data_pagamento: dataManual } : p));
-                    setModalAberto(false);
-                } catch (e) { alert("Erro ao salvar."); }
-            };
-
-            if (carregando) return <div className="flex h-screen items-center justify-center">Carregando...</div>;
-            if (!dadosContrato) return <div className="flex h-screen items-center justify-center">Nenhum dado encontrado.</div>;
-
-            return (
-                <div className="max-w-md mx-auto min-h-screen pb-10">
-                    {/* Cabeçalho */}
-                    <div className="bg-blue-600 text-white p-6 rounded-b-3xl shadow-lg">
-                        <h1 className="text-xl font-bold">Olá, {dadosContrato.cliente_nome}</h1>
-                        <p className="text-blue-100 text-sm">Status da sua Dívida Ativa</p>
-                        <div className="mt-4 bg-white/10 p-4 rounded-xl border border-white/20">
-                            <p className="text-xs text-blue-100">Total Devido</p>
-                            <p className="text-2xl font-bold">{formatarMoeda(dadosContrato.valor_total)}</p>
-                        </div>
-                    </div>
-
-                    {/* Parcelas */}
-                    <div className="p-4 space-y-3 mt-4">
-                        <h2 className="font-bold text-gray-600 px-1">Suas Parcelas</h2>
-                        {parcelas.map(p => (
-                            <div key={p.id} className={`bg-white p-4 rounded-2xl shadow-sm border-l-4 ${p.status === 'pago' ? 'border-green-500' : 'border-gray-300'}`}>
-                                <div className="flex justify-between items-start">
-                                    <div>
-                                        <p className="font-bold text-gray-700">Parcela {p.numero_parcela}</p>
-                                        <p className="text-xs text-gray-400">Vence: {formatarData(p.data_vencimento)}</p>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="font-bold">{formatarMoeda(p.valor)}</p>
-                                        <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${p.status === 'pago' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                                            {p.status}
-                                        </span>
-                                    </div>
-                                </div>
-                                {p.status !== 'pago' && (
-                                    <div className="flex gap-2 mt-4">
-                                        <button onClick={() => { setParcelaSelecionada(p); setTabAtiva('manual'); setModalAberto(true); }} className="flex-1 bg-gray-100 text-gray-600 py-2 rounded-xl text-xs font-bold">Informar Data</button>
-                                        <button className="flex-1 bg-blue-50 text-blue-600 py-2 rounded-xl text-xs font-bold border border-blue-100">Comprovante</button>
-                                    </div>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-
-                    {/* Modal Simples */}
-                    {modalAberto && (
-                        <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50">
-                            <div className="bg-white w-full rounded-t-3xl p-6 shadow-2xl animate-bounce-in">
-                                <div className="flex justify-between items-center mb-6">
-                                    <h3 className="font-bold">Registrar Pagamento</h3>
-                                    <button onClick={() => setModalAberto(false)} className="text-gray-400">✕</button>
-                                </div>
-                                <div className="space-y-4">
-                                    <p className="text-sm text-gray-500 text-center">Parcela {parcelaSelecionada.numero_parcela} - {formatarMoeda(parcelaSelecionada.valor)}</p>
-                                    <input type="date" className="w-full border p-4 rounded-2xl outline-none focus:border-blue-500" value={dataManual} onChange={e => setDataManual(e.target.value)} />
-                                    <button onClick={confirmarEnvioManual} className="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-lg shadow-blue-200">Confirmar Pagamento</button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            );
+        .modal-enter {
+            animation: fade-in-up 0.3s ease-out forwards;
+        }
+        
+        @keyframes fade-in-up {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
+        /* Ajuste do modal para desktop */
+        @media (min-width: 640px) {
+            .modal-enter {
+                animation: pop-in 0.2s ease-out forwards;
+            }
+            @keyframes pop-in {
+                from { opacity: 0; transform: scale(0.95); }
+                to { opacity: 1; transform: scale(1); }
+            }
+        }
+    </style>
+</head>
+<body class="text-gray-800 antialiased min-h-screen flex flex-col">
+
+    <!-- Navbar fixa no topo para Desktop e Mobile -->
+    <header class="bg-white border-b border-gray-200 sticky top-0 z-30">
+        <div class="max-w-6xl mx-auto px-6 py-4 flex justify-between items-center">
+            <div>
+                <h1 class="text-xl font-bold text-gray-900">Simples Nacional</h1>
+                <p class="text-sm text-gray-500">Cliente: Felipe</p>
+            </div>
+            <div id="connection-status" class="flex items-center gap-2 text-xs font-medium bg-gray-100 px-3 py-1.5 rounded-full text-gray-500">
+                <i class="ph ph-spinner animate-spin"></i> Conectando...
+            </div>
+        </div>
+    </header>
+
+    <!-- Container Principal Responsivo -->
+    <main class="flex-1 w-full max-w-6xl mx-auto p-4 md:p-8 grid grid-cols-1 lg:grid-cols-12 gap-8 relative z-0">
+        
+        <!-- Coluna Esquerda (Destaque) -->
+        <div class="lg:col-span-4 lg:sticky lg:top-24 h-fit" id="hero-section">
+            <div class="animate-pulse bg-gray-200 h-64 rounded-3xl w-full"></div>
+        </div>
+
+        <!-- Coluna Direita (Lista) -->
+        <div class="lg:col-span-8 bg-white rounded-3xl shadow-sm border border-gray-100 p-2 sm:p-6" id="list-section">
+            <div class="space-y-4 p-4">
+                <div class="animate-pulse bg-gray-100 h-16 rounded-2xl w-full"></div>
+                <div class="animate-pulse bg-gray-100 h-16 rounded-2xl w-full"></div>
+                <div class="animate-pulse bg-gray-100 h-16 rounded-2xl w-full"></div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Modal de Pagamento -->
+    <div id="payment-modal" class="fixed inset-0 bg-gray-900/60 z-50 hidden flex items-end sm:items-center justify-center backdrop-blur-sm p-4">
+        <div class="bg-white w-full max-w-md rounded-3xl p-6 sm:p-8 modal-enter shadow-2xl">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-xl font-bold text-gray-900">Registrar Pagamento</h3>
+                <button onclick="closeModal()" class="p-2 bg-gray-100 rounded-full text-gray-500 hover:bg-gray-200 transition-colors">
+                    <i class="ph ph-x text-lg"></i>
+                </button>
+            </div>
+            
+            <input type="hidden" id="modal-parcela-id">
+            
+            <!-- Resumo do Valor (Apenas Leitura) -->
+            <div class="bg-blue-50/50 p-4 rounded-2xl border border-blue-100 mb-6 flex flex-col items-center justify-center">
+                <p class="text-sm font-semibold text-blue-600 mb-1" id="modal-parcela-label">Valor da Parcela</p>
+                <p class="text-3xl font-black text-gray-900" id="modal-display-amount">R$ 0,00</p>
+            </div>
+            
+            <div class="space-y-5">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1.5">Data que foi pago</label>
+                    <input type="date" id="modal-date" class="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow">
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-semibold text-gray-700 mb-1.5">Valor Efetivamente Pago (R$)</label>
+                    <p class="text-xs text-gray-500 mb-2">Informe o valor exato pago com juros/descontos</p>
+                    <input type="number" step="0.01" id="modal-paid-amount" class="w-full bg-gray-50 border border-gray-200 text-gray-900 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-shadow">
+                </div>
+            </div>
+            
+            <button id="btn-confirm" onclick="confirmPayment()" class="w-full bg-gray-900 hover:bg-black text-white font-bold rounded-xl py-4 mt-8 transition-colors shadow-lg flex items-center justify-center gap-2">
+                <i class="ph-bold ph-check-circle text-xl"></i>
+                <span>Confirmar Pagamento</span>
+            </button>
+        </div>
+    </div>
+
+    <script>
+        let parcelas = [];
+        const API_URL = '/.netlify/functions/parcelas';
+
+        const formatMoney = (value) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
+        
+        const formatDate = (dateString) => {
+            if (!dateString) return '--/--/----';
+            const date = new Date(dateString);
+            const userTimezoneOffset = date.getTimezoneOffset() * 60000;
+            const adjustedDate = new Date(date.getTime() + userTimezoneOffset);
+            return adjustedDate.toLocaleDateString('pt-BR');
+        };
+
+        const getTodayString = () => {
+            const today = new Date();
+            today.setMinutes(today.getMinutes() - today.getTimezoneOffset());
+            return today.toISOString().split('T')[0];
+        };
+
+        const isLate = (dateString) => {
+            return new Date(dateString) < new Date(getTodayString());
+        };
+
+        function setConnectionStatus(status) {
+            const el = document.getElementById('connection-status');
+            if (status === 'ok') {
+                el.innerHTML = '<i class="ph-fill ph-check-circle text-green-500 text-lg"></i> <span class="text-green-700">Online</span>';
+                el.className = 'flex items-center gap-1.5 text-xs font-bold bg-green-50 px-3 py-1.5 rounded-full';
+            } else if (status === 'offline') {
+                el.innerHTML = '<i class="ph-fill ph-warning-circle text-orange-500 text-lg"></i> <span class="text-orange-700">Modo Teste</span>';
+                el.className = 'flex items-center gap-1.5 text-xs font-bold bg-orange-50 px-3 py-1.5 rounded-full';
+            }
+        }
+
+        async function fetchData() {
+            try {
+                const response = await fetch(API_URL);
+                if (!response.ok) throw new Error('API indisponível');
+                parcelas = await response.json();
+                
+                parcelas = parcelas.map(p => ({
+                    ...p,
+                    vencimento: p.vencimento.split('T')[0],
+                    data_pagamento: p.data_pagamento ? p.data_pagamento.split('T')[0] : null,
+                    valor_esperado: parseFloat(p.valor_esperado),
+                    valor_pago: parseFloat(p.valor_pago)
+                }));
+                
+                setConnectionStatus('ok');
+                render();
+            } catch (error) {
+                console.warn('Usando dados de teste offline:', error);
+                setConnectionStatus('offline');
+                parcelas = [
+                    { id: 1, numero: 1, vencimento: '2025-10-31', valor_esperado: 162.55, pago: true, data_pagamento: '2025-10-31', valor_pago: 162.55 },
+                    { id: 2, numero: 2, vencimento: '2025-11-28', valor_esperado: 162.55, pago: true, data_pagamento: '2025-11-30', valor_pago: 162.55 },
+                    { id: 3, numero: 3, vencimento: '2026-02-27', valor_esperado: 171.38, pago: false, data_pagamento: null, valor_pago: null },
+                    { id: 4, numero: 4, vencimento: '2026-03-31', valor_esperado: 171.38, pago: false, data_pagamento: null, valor_pago: null },
+                ];
+                render();
+            }
+        }
+
+        function render() {
+            const heroSection = document.getElementById('hero-section');
+            const listSection = document.getElementById('list-section');
+            
+            const nextPending = parcelas.find(p => !p.pago);
+            
+            // Hero (Destaque)
+            if (nextPending) {
+                const overdue = isLate(nextPending.vencimento);
+                const bgClass = overdue ? 'bg-red-600' : 'bg-blue-600';
+                const shadowClass = overdue ? 'shadow-red-600/20' : 'shadow-blue-600/20';
+                const labelText = overdue ? '⚠️ Parcela Atrasada' : 'Próximo Vencimento';
+
+                heroSection.innerHTML = `
+                    <div class="${bgClass} rounded-[2rem] p-8 text-white shadow-2xl ${shadowClass} relative overflow-hidden transition-all">
+                        <div class="absolute -right-10 -top-10 w-48 h-48 bg-white opacity-10 rounded-full blur-2xl"></div>
+                        <div class="relative z-10">
+                            <span class="bg-white/20 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider backdrop-blur-md border border-white/10">
+                                ${labelText}
+                            </span>
+                            <div class="mt-6 mb-8">
+                                <p class="text-white/80 font-medium mb-1">Parcela ${nextPending.numero}</p>
+                                <h2 class="text-5xl font-black tracking-tight">${formatMoney(nextPending.valor_esperado)}</h2>
+                            </div>
+                            <div class="flex items-center gap-2 mb-8 text-sm font-medium bg-black/15 w-fit px-4 py-2.5 rounded-2xl backdrop-blur-sm border border-white/10">
+                                <i class="ph-bold ph-calendar-blank text-lg"></i>
+                                Vence em: ${formatDate(nextPending.vencimento)}
+                            </div>
+                            <button onclick="openModal(${nextPending.id})" class="w-full bg-white text-gray-900 font-bold py-4 rounded-2xl hover:bg-gray-50 transition-transform active:scale-95 flex items-center justify-center gap-2 shadow-xl">
+                                <i class="ph-fill ph-check-circle text-blue-600 text-xl"></i>
+                                Registrar Pagamento
+                            </button>
+                        </div>
+                    </div>
+                `;
+            } else {
+                heroSection.innerHTML = `
+                    <div class="bg-gradient-to-br from-green-400 to-emerald-600 rounded-[2rem] p-8 text-white shadow-2xl shadow-green-500/20 text-center">
+                        <i class="ph-fill ph-check-circle text-6xl mb-4 inline-block drop-shadow-md"></i>
+                        <h2 class="text-3xl font-black mb-2">Tudo em dia!</h2>
+                        <p class="text-green-50 font-medium">Nenhuma parcela pendente.</p>
+                    </div>
+                `;
+            }
+
+            // Lista Histórico
+            let listHtml = `<div class="flex justify-between items-center mb-6 px-2">
+                                <h3 class="font-bold text-gray-900 text-xl">Todas as Parcelas</h3>
+                            </div>
+                            <div class="space-y-3">`;
+
+            parcelas.forEach(p => {
+                const isOverdue = !p.pago && isLate(p.vencimento);
+                
+                let iconHtml = '';
+                let textClass = 'text-gray-900';
+                let subText = '';
+                let subTextColor = 'text-gray-500';
+
+                if (p.pago) {
+                    iconHtml = `<div class="w-12 h-12 rounded-2xl bg-green-50 flex items-center justify-center text-green-500 border border-green-100"><i class="ph-fill ph-check-circle text-2xl"></i></div>`;
+                    textClass = 'text-gray-400 line-through';
+                    subText = `Pago: ${formatDate(p.data_pagamento)}`;
+                } else if (isOverdue) {
+                    iconHtml = `<div class="w-12 h-12 rounded-2xl bg-red-50 flex items-center justify-center text-red-500 border border-red-100"><i class="ph-fill ph-warning-circle text-2xl"></i></div>`;
+                    subText = `Venceu: ${formatDate(p.vencimento)}`;
+                    subTextColor = 'text-red-500 font-medium';
+                } else {
+                    iconHtml = `<div class="w-12 h-12 rounded-2xl bg-gray-50 flex items-center justify-center text-gray-400 border border-gray-100"><i class="ph-bold ph-clock text-2xl"></i></div>`;
+                    subText = `Vence: ${formatDate(p.vencimento)}`;
+                }
+
+                listHtml += `
+                    <div class="group bg-white hover:bg-gray-50 p-4 rounded-2xl border ${isOverdue ? 'border-red-100' : 'border-gray-100'} flex items-center justify-between transition-colors cursor-pointer"
+                         onclick="openModal(${p.id})">
+                        <div class="flex items-center gap-4">
+                            ${iconHtml}
+                            <div>
+                                <p class="text-sm font-bold ${textClass}">Parcela ${p.numero}</p>
+                                <p class="text-xs ${subTextColor} mt-0.5">${subText}</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="font-bold ${p.pago ? 'text-gray-400' : 'text-gray-900'}">${formatMoney(p.pago ? p.valor_pago : p.valor_esperado)}</p>
+                            ${!p.pago ? `<span class="text-xs text-blue-600 font-bold mt-1 group-hover:underline">Pagar</span>` : `<span class="text-xs text-green-600 font-bold mt-1">Ok</span>`}
+                        </div>
+                    </div>
+                `;
+            });
+
+            listSection.innerHTML = listHtml + `</div>`;
+        }
+
+        function openModal(id) {
+            const parcela = parcelas.find(p => p.id === id);
+            if (!parcela) return;
+
+            document.getElementById('modal-parcela-id').value = id;
+            document.getElementById('modal-parcela-label').innerText = `Valor da Parcela ${parcela.numero}`;
+            document.getElementById('modal-display-amount').innerText = formatMoney(parcela.valor_esperado);
+            
+            document.getElementById('modal-date').value = parcela.data_pagamento || getTodayString();
+            document.getElementById('modal-paid-amount').value = parcela.valor_pago || parcela.valor_esperado;
+
+            const modal = document.getElementById('payment-modal');
+            modal.classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('payment-modal').classList.add('hidden');
+        }
+
+        async function confirmPayment() {
+            const btn = document.getElementById('btn-confirm');
+            const originalText = btn.innerHTML;
+            
+            const id = parseInt(document.getElementById('modal-parcela-id').value);
+            const date = document.getElementById('modal-date').value;
+            const paidAmount = parseFloat(document.getElementById('modal-paid-amount').value);
+
+            if (!date || isNaN(paidAmount)) {
+                alert("Preencha a data e o valor pago corretamente.");
+                return;
+            }
+
+            btn.innerHTML = '<i class="ph ph-spinner animate-spin text-xl"></i> Salvando...';
+            btn.disabled = true;
+
+            const payload = { 
+                id: id, 
+                pago: true, 
+                dataPagamento: date, 
+                valorPago: paidAmount
+                // valorEsperado não é mais enviado daqui
+            };
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'PUT',
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    await fetchData();
+                } else {
+                    throw new Error("Erro na API");
+                }
+            } catch (error) {
+                const index = parcelas.findIndex(p => p.id === id);
+                if (index !== -1) {
+                    parcelas[index].pago = true;
+                    parcelas[index].data_pagamento = date;
+                    parcelas[index].valor_pago = paidAmount;
+                }
+                render();
+            }
+
+            closeModal();
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+
+        window.onload = fetchData;
     </script>
 </body>
 </html>
