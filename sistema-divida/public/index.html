@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Dívidas - Felipe</title>
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React e ReactDOM via CDN -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <!-- Babel para ler JSX no navegador -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Ícones Lucide -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        function App() {
+            const [dadosContrato, setDadosContrato] = useState(null);
+            const [parcelas, setParcelas] = useState([]);
+            const [carregando, setCarregando] = useState(true);
+            const [modalAberto, setModalAberto] = useState(false);
+            const [parcelaSelecionada, setParcelaSelecionada] = useState(null);
+            const [tabAtiva, setTabAtiva] = useState('upload'); 
+            const [dataManual, setDataManual] = useState('');
+
+            useEffect(() => {
+                fetch('http://localhost:3001/api/dividas/Felipe')
+                    .then(res => res.json())
+                    .then(data => {
+                        setDadosContrato(data.contrato);
+                        setParcelas(data.parcelas);
+                        setCarregando(false);
+                    })
+                    .catch(() => setCarregando(false));
+            }, []);
+
+            // Reinicializa os ícones do Lucide sempre que o componente renderiza
+            useEffect(() => {
+                if (window.lucide) window.lucide.createIcons();
+            });
+
+            const formatarMoeda = (v) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
+            const formatarData = (d) => d ? new Date(d).toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : '';
+
+            const confirmarEnvioManual = async () => {
+                try {
+                    await fetch('http://localhost:3001/api/pagamentos/manual', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ parcela_id: parcelaSelecionada.id, data_pagamento: dataManual })
+                    });
+                    
+                    setParcelas(parcelas.map(p => p.id === parcelaSelecionada.id ? { ...p, status: 'pago', data_pagamento: dataManual } : p));
+                    setModalAberto(false);
+                } catch (e) { alert("Erro ao salvar."); }
+            };
+
+            if (carregando) return <div className="flex h-screen items-center justify-center">Carregando...</div>;
+            if (!dadosContrato) return <div className="flex h-screen items-center justify-center">Nenhum dado encontrado.</div>;
+
+            return (
+                <div className="max-w-md mx-auto min-h-screen pb-10">
+                    {/* Cabeçalho */}
+                    <div className="bg-blue-600 text-white p-6 rounded-b-3xl shadow-lg">
+                        <h1 className="text-xl font-bold">Olá, {dadosContrato.cliente_nome}</h1>
+                        <p className="text-blue-100 text-sm">Status da sua Dívida Ativa</p>
+                        <div className="mt-4 bg-white/10 p-4 rounded-xl border border-white/20">
+                            <p className="text-xs text-blue-100">Total Devido</p>
+                            <p className="text-2xl font-bold">{formatarMoeda(dadosContrato.valor_total)}</p>
+                        </div>
+                    </div>
+
+                    {/* Parcelas */}
+                    <div className="p-4 space-y-3 mt-4">
+                        <h2 className="font-bold text-gray-600 px-1">Suas Parcelas</h2>
+                        {parcelas.map(p => (
+                            <div key={p.id} className={`bg-white p-4 rounded-2xl shadow-sm border-l-4 ${p.status === 'pago' ? 'border-green-500' : 'border-gray-300'}`}>
+                                <div className="flex justify-between items-start">
+                                    <div>
+                                        <p className="font-bold text-gray-700">Parcela {p.numero_parcela}</p>
+                                        <p className="text-xs text-gray-400">Vence: {formatarData(p.data_vencimento)}</p>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="font-bold">{formatarMoeda(p.valor)}</p>
+                                        <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded-full ${p.status === 'pago' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                                            {p.status}
+                                        </span>
+                                    </div>
+                                </div>
+                                {p.status !== 'pago' && (
+                                    <div className="flex gap-2 mt-4">
+                                        <button onClick={() => { setParcelaSelecionada(p); setTabAtiva('manual'); setModalAberto(true); }} className="flex-1 bg-gray-100 text-gray-600 py-2 rounded-xl text-xs font-bold">Informar Data</button>
+                                        <button className="flex-1 bg-blue-50 text-blue-600 py-2 rounded-xl text-xs font-bold border border-blue-100">Comprovante</button>
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Modal Simples */}
+                    {modalAberto && (
+                        <div className="fixed inset-0 bg-black/50 flex items-end justify-center z-50">
+                            <div className="bg-white w-full rounded-t-3xl p-6 shadow-2xl animate-bounce-in">
+                                <div className="flex justify-between items-center mb-6">
+                                    <h3 className="font-bold">Registrar Pagamento</h3>
+                                    <button onClick={() => setModalAberto(false)} className="text-gray-400">✕</button>
+                                </div>
+                                <div className="space-y-4">
+                                    <p className="text-sm text-gray-500 text-center">Parcela {parcelaSelecionada.numero_parcela} - {formatarMoeda(parcelaSelecionada.valor)}</p>
+                                    <input type="date" className="w-full border p-4 rounded-2xl outline-none focus:border-blue-500" value={dataManual} onChange={e => setDataManual(e.target.value)} />
+                                    <button onClick={confirmarEnvioManual} className="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-lg shadow-blue-200">Confirmar Pagamento</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
